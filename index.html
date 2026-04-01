@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aprobación de Documentos</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg-primary:#ffffff;--bg-secondary:#f5f5f4;--bg-tertiary:#eeede9;
+  --text-primary:#1a1a1a;--text-secondary:#6b6b68;
+  --border:rgba(0,0,0,0.12);--border-md:rgba(0,0,0,0.2);
+  --radius:8px;--radius-lg:12px;
+  --green:#3B6D11;--green-bg:#eaf3de;--green-text:#27500a;
+  --blue:#185FA5;--blue-bg:#e6f1fb;--blue-text:#0c447c;
+  --amber:#BA7517;--amber-bg:#faeeda;--amber-text:#633806;
+  --red:#A32D2D;--red-bg:#fcebeb;--red-text:#791F1F;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg-tertiary);color:var(--text-primary);}
+.app{display:grid;grid-template-columns:230px 1fr 360px;grid-template-rows:52px 1fr;height:100vh;}
+.topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;background:var(--bg-primary);border-bottom:0.5px solid var(--border);}
+.topbar h1{font-size:17px;font-weight:500;}
+.topbar button{background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:18px;padding:4px 8px;border-radius:6px;}
+.topbar button:hover{background:var(--bg-secondary);}
+.panel-left{background:var(--bg-primary);border-right:0.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.search-row{display:flex;align-items:center;gap:6px;padding:10px;}
+.search-row input{flex:1;font-size:13px;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--radius);outline:none;background:var(--bg-secondary);}
+.search-row input:focus{border-color:var(--border-md);}
+.filter-btn{background:none;border:0.5px solid var(--border);border-radius:var(--radius);padding:6px 9px;cursor:pointer;color:var(--text-secondary);font-size:14px;}
+.doc-list{flex:1;overflow-y:auto;padding:6px 8px;}
+.doc-item{padding:10px;border-radius:var(--radius);cursor:pointer;border:0.5px solid transparent;margin-bottom:3px;}
+.doc-item:hover{background:var(--bg-secondary);}
+.doc-item.active{background:var(--bg-secondary);border-color:var(--border-md);}
+.doc-item-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.doc-item-meta{font-size:11px;color:var(--text-secondary);margin-top:2px;}
+.doc-item-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;margin-top:5px;}
+.b-pending{background:var(--amber-bg);color:var(--amber-text);}
+.b-progress{background:var(--blue-bg);color:var(--blue-text);}
+.b-done{background:var(--green-bg);color:var(--green-text);}
+.upload-btn{display:flex;align-items:center;gap:8px;padding:12px 14px;border-top:0.5px solid var(--border);cursor:pointer;color:var(--text-secondary);font-size:13px;background:none;border-left:none;border-right:none;border-bottom:none;width:100%;font-family:inherit;}
+.upload-btn:hover{background:var(--bg-secondary);color:var(--text-primary);}
+#file-upload{display:none;}
+.panel-mid{background:var(--bg-secondary);overflow-y:auto;padding:1rem;}
+.progress-wrap{background:var(--bg-primary);border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;border:0.5px solid var(--border);display:flex;align-items:center;gap:10px;}
+.prog-bg{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;background:#1D9E75;border-radius:3px;transition:width 0.4s;}
+.prog-pct{font-size:12px;color:var(--text-secondary);min-width:32px;text-align:right;}
+.a-card{background:var(--bg-primary);border-radius:var(--radius-lg);border:0.5px solid var(--border);margin-bottom:10px;overflow:hidden;}
+.a-card-head{padding:9px 14px;background:var(--bg-secondary);border-bottom:0.5px solid var(--border);font-size:13px;font-weight:500;}
+.a-card-body{padding:14px;display:flex;align-items:flex-start;gap:12px;}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--bg-tertiary);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--text-secondary);flex-shrink:0;text-align:center;line-height:1.3;}
+.a-info{flex:1;}
+.a-status-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.sl{font-size:12px;color:var(--text-secondary);}
+.sv{font-size:12px;font-weight:500;}
+.sv-wait{color:var(--blue);}
+.sv-ok{color:var(--green);}
+.sv-rej{color:var(--red);}
+.sv-rdy{color:var(--amber);}
+.dt{font-size:12px;color:var(--text-secondary);}
+.dt span{color:var(--text-primary);margin-left:3px;}
+.sig-section{margin-top:10px;}
+.sig-section label{font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px;}
+canvas.sig{width:100%;height:72px;border:0.5px solid var(--border-md);border-radius:var(--radius);background:#fff;cursor:crosshair;display:block;touch-action:none;}
+.sig-actions{display:flex;gap:6px;margin-top:6px;}
+.btn-sm{font-size:11px;padding:5px 12px;border-radius:var(--radius);border:0.5px solid var(--border-md);background:var(--bg-primary);color:var(--text-primary);cursor:pointer;font-family:inherit;}
+.btn-sm:hover{background:var(--bg-secondary);}
+.btn-ok{border-color:var(--green);color:var(--green);}
+.btn-rej{border-color:var(--red);color:var(--red);}
+.locked{font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:6px;}
+.panel-right{background:var(--bg-primary);border-left:0.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.viewer-bar{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-bottom:0.5px solid var(--border);gap:6px;}
+.vbtn{background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px;color:var(--text-secondary);font-size:14px;}
+.vbtn:hover{background:var(--bg-secondary);}
+.page-box{display:flex;align-items:center;gap:4px;background:#111;border-radius:4px;padding:2px 8px;}
+.page-box input{width:32px;text-align:center;font-size:12px;padding:2px;background:#222;color:#fff;border:none;outline:none;border-radius:3px;}
+.page-box span{font-size:12px;color:#aaa;}
+.viewer-body{flex:1;overflow:auto;background:#888;display:flex;align-items:center;justify-content:center;padding:10px;}
+.viewer-body iframe{width:100%;height:100%;border:none;border-radius:4px;background:#fff;}
+.viewer-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.viewer-empty p{font-size:13px;color:#ccc;}
+.empty-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:10px;}
+.empty-mid p{font-size:14px;color:var(--text-secondary);}
+.empty-mid span{font-size:32px;}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;font-size:12px;padding:9px 20px;border-radius:20px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:99;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1>Aprobación de documentos</h1>
+    <button onclick="resetAll()" title="Reiniciar">↺</button>
+  </div>
+  <div class="panel-left">
+    <div class="search-row">
+      <input type="text" placeholder="Buscar" id="search-input" oninput="filterDocs()">
+      <button class="filter-btn">⊟</button>
+    </div>
+    <div class="doc-list" id="doc-list">
+      <div style="padding:20px 10px;text-align:center;">
+        <p style="font-size:12px;color:var(--text-secondary);line-height:1.6;">Sube un documento para comenzar el proceso de aprobación.</p>
+      </div>
+    </div>
+    <input type="file" id="file-upload" accept=".pdf,image/*">
+    <button class="upload-btn" onclick="document.getElementById('file-upload').click()">
+      <span style="font-size:16px;">⊞</span> Subir Documento
+    </button>
+  </div>
+
+  <div class="panel-mid" id="panel-mid">
+    <div class="empty-mid">
+      <span>📄</span>
+      <p>Sube un documento para iniciar el flujo de aprobación</p>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="viewer-bar">
+      <div style="display:flex;gap:2px;">
+        <button class="vbtn">⌕</button>
+        <button class="vbtn" onclick="changePage(-1)">∧</button>
+        <button class="vbtn" onclick="changePage(1)">∨</button>
+      </div>
+      <div class="page-box">
+        <input id="page-num" value="0">
+        <span id="page-total">/ 0</span>
+      </div>
+      <div style="display:flex;gap:2px;">
+        <button class="vbtn" onclick="zoomOut()">−</button>
+        <button class="vbtn" onclick="zoomIn()">+</button>
+      </div>
+    </div>
+    <div class="viewer-body" id="viewer-body">
+      <div class="viewer-empty"><p>Sin documento</p></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const ROLES=[{id:'team',label:'Team'},{id:'manager',label:'Manager'},{id:'director',label:'Director'},{id:'presidencia',label:'Presidencia'}];
+let docs=[],activeDoc=null,canvasCtx={},drawState={},lastPt={};
+
+function newDoc(name,url,type){
+  return{id:Date.now()+Math.random(),name,url,type,
+    approvals:ROLES.map((r,i)=>({role:r.id,label:r.label,status:i===0?'ready':'waiting',datetime:null,sig:null}))};
+}
+
+function fmt(){
+  const d=new Date();
+  return d.toLocaleDateString('es-DO')+' '+d.toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+}
+
+function calcPct(d){
+  return Math.round(d.approvals.filter(a=>a.status==='approved').length/ROLES.length*100);
+}
+
+function renderDocList(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const list=document.getElementById('doc-list');
+  const filtered=docs.filter(d=>d.name.toLowerCase().includes(q));
+  if(filtered.length===0){
+    list.innerHTML='<div style="padding:20px 10px;text-align:center;"><p style="font-size:12px;color:var(--text-secondary);line-height:1.6;">Sube un documento para comenzar el proceso de aprobación.</p></div>';
+    return;
+  }
+  list.innerHTML='';
+  filtered.forEach(d=>{
+    const div=document.createElement('div');
+    div.className='doc-item'+(activeDoc&&activeDoc.id===d.id?' active':'');
+    const pct=calcPct(d);
+    const badge=pct===100?'<span class="doc-item-badge b-done">Aprobado</span>':pct>0?'<span class="doc-item-badge b-progress">En progreso</span>':'<span class="doc-item-badge b-pending">Pendiente</span>';
+    div.innerHTML=`<div class="doc-item-name">${d.name}</div><div class="doc-item-meta">${pct}% completado</div>${badge}`;
+    div.onclick=()=>selectDoc(d);
+    list.appendChild(div);
+  });
+}
+
+function filterDocs(){renderDocList();}
+
+function selectDoc(d){
+  activeDoc=d;
+  renderDocList();
+  renderFlow();
+  renderViewer();
+}
+
+function renderFlow(){
+  const mid=document.getElementById('panel-mid');
+  if(!activeDoc){
+    mid.innerHTML='<div class="empty-mid"><span>📄</span><p>Sube un documento para iniciar el flujo de aprobación</p></div>';
+    return;
+  }
+  const pct=calcPct(activeDoc);
+  let html=`<div class="progress-wrap"><div class="prog-bg"><div class="prog-fill" id="prog-fill" style="width:${pct}%"></div></div><span class="prog-pct">${pct}%</span></div><div id="approval-flow">`;
+  activeDoc.approvals.forEach((ap,idx)=>{
+    const st=ap.status==='approved'?'Aprobado':ap.status==='rejected'?'Rechazado':ap.status==='ready'?'Listo para aprobar':idx>0?`Esperando aprobación de ${activeDoc.approvals[idx-1].label}`:'Pendiente';
+    const sc=ap.status==='approved'?'sv-ok':ap.status==='rejected'?'sv-rej':ap.status==='ready'?'sv-rdy':'sv-wait';
+    const locked=ap.status==='waiting';
+    const sid='sig-'+ap.role;
+    html+=`<div class="a-card"><div class="a-card-head">${ap.label}</div><div class="a-card-body">
+      <div class="avatar">${ap.label.substring(0,6).toUpperCase()}</div>
+      <div class="a-info">
+        <div class="a-status-row"><span class="sl">Estado:</span><span class="sv ${sc}">${st}</span></div>
+        <div class="dt">Día y Hora:<span>${ap.datetime||'—'}</span></div>
+        ${!locked&&ap.status!=='approved'&&ap.status!=='rejected'?`
+          <div class="sig-section"><label>Firma</label>
+          <canvas class="sig" id="${sid}" width="500" height="90"></canvas>
+          <div class="sig-actions">
+            <button class="btn-sm" onclick="clearSig('${ap.role}')">Limpiar</button>
+            <button class="btn-sm btn-ok" onclick="approve('${ap.role}')">✓ Aprobar</button>
+            <button class="btn-sm btn-rej" onclick="reject('${ap.role}')">✗ Rechazar</button>
+          </div></div>`:''}
+        ${ap.status==='approved'&&ap.sig?`<div class="sig-section"><label>Firma registrada</label><img src="${ap.sig}" style="width:100%;height:55px;object-fit:contain;border:0.5px solid var(--border);border-radius:var(--radius);"></div>`:''}
+        ${locked?'<p class="locked">Bloqueado hasta aprobación anterior</p>':''}
+      </div></div></div>`;
+  });
+  html+='</div>';
+  mid.innerHTML=html;
+  activeDoc.approvals.forEach(ap=>{
+    if(ap.status!=='waiting'&&ap.status!=='approved'&&ap.status!=='rejected'){
+      requestAnimationFrame(()=>setupCanvas('sig-'+ap.role,ap.role));
+    }
+  });
+}
+
+function setupCanvas(cid,role){
+  const c=document.getElementById(cid);if(!c)return;
+  const ctx=c.getContext('2d');
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.lineJoin='round';
+  canvasCtx[role]={canvas:c,ctx};drawState[role]=false;
+  const gp=e=>{const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*(c.width/r.width),y:(e.clientY-r.top)*(c.height/r.height)};};
+  c.onmousedown=e=>{drawState[role]=true;lastPt[role]=gp(e);};
+  c.onmousemove=e=>{if(!drawState[role])return;const p=gp(e);ctx.beginPath();ctx.moveTo(lastPt[role].x,lastPt[role].y);ctx.lineTo(p.x,p.y);ctx.stroke();lastPt[role]=p;};
+  c.onmouseup=c.onmouseleave=()=>{drawState[role]=false;};
+  c.ontouchstart=e=>{e.preventDefault();drawState[role]=true;lastPt[role]=gp(e.touches[0]);};
+  c.ontouchmove=e=>{e.preventDefault();if(!drawState[role])return;const p=gp(e.touches[0]);ctx.beginPath();ctx.moveTo(lastPt[role].x,lastPt[role].y);ctx.lineTo(p.x,p.y);ctx.stroke();lastPt[role]=p;};
+  c.ontouchend=()=>{drawState[role]=false;};
+}
+
+function clearSig(role){const d=canvasCtx[role];if(d)d.ctx.clearRect(0,0,d.canvas.width,d.canvas.height);}
+
+function hasSig(role){
+  const d=canvasCtx[role];if(!d)return false;
+  const px=d.ctx.getImageData(0,0,d.canvas.width,d.canvas.height).data;
+  return px.some((v,i)=>i%4===3&&v>0);
+}
+
+function approve(role){
+  if(!hasSig(role)){showToast('Por favor dibuja tu firma primero');return;}
+  const ap=activeDoc.approvals.find(a=>a.role===role);
+  ap.status='approved';ap.datetime=fmt();
+  ap.sig=canvasCtx[role].canvas.toDataURL('image/png');
+  const idx=activeDoc.approvals.indexOf(ap);
+  if(idx+1<activeDoc.approvals.length)activeDoc.approvals[idx+1].status='ready';
+  renderFlow();renderDocList();
+  showToast(ap.label+' aprobó el documento');
+}
+
+function reject(role){
+  const ap=activeDoc.approvals.find(a=>a.role===role);
+  ap.status='rejected';ap.datetime=fmt();
+  renderFlow();renderDocList();
+  showToast(ap.label+' rechazó el documento');
+}
+
+function renderViewer(){
+  const vb=document.getElementById('viewer-body');
+  if(!activeDoc||!activeDoc.url){
+    vb.innerHTML='<div class="viewer-empty"><p>Sin documento</p></div>';
+    document.getElementById('page-num').value='0';
+    document.getElementById('page-total').textContent='/ 0';
+    return;
+  }
+  vb.innerHTML=`<iframe src="${activeDoc.url}"></iframe>`;
+  document.getElementById('page-num').value='1';
+  document.getElementById('page-total').textContent='/ ?';
+}
+
+function changePage(d){showToast('Navegación disponible con PDF cargado');}
+function zoomIn(){showToast('Zoom +');}
+function zoomOut(){showToast('Zoom −');}
+
+document.getElementById('file-upload').addEventListener('change',function(){
+  const file=this.files[0];if(!file)return;
+  const url=URL.createObjectURL(file);
+  const d=newDoc(file.name,url,file.type);
+  docs.unshift(d);
+  renderDocList();
+  selectDoc(d);
+  showToast('Documento subido: '+file.name);
+  this.value='';
+});
+
+function resetAll(){
+  docs=[];activeDoc=null;canvasCtx={};drawState={};lastPt={};
+  renderDocList();
+  document.getElementById('panel-mid').innerHTML='<div class="empty-mid"><span>📄</span><p>Sube un documento para iniciar el flujo de aprobación</p></div>';
+  document.getElementById('viewer-body').innerHTML='<div class="viewer-empty"><p>Sin documento</p></div>';
+  document.getElementById('page-num').value='0';
+  document.getElementById('page-total').textContent='/ 0';
+  showToast('App reiniciada');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+</script>
+</body>
+</html>
